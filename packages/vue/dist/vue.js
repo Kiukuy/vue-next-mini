@@ -4,6 +4,7 @@ var Vue = (function (exports) {
     /**
      * 单例的，当前的 effect
      */
+    var activeEffect;
     /**
      * 响应性触发依赖时的执行类
      */
@@ -12,6 +13,8 @@ var Vue = (function (exports) {
             this.fn = fn;
         }
         ReactiveEffect.prototype.run = function () {
+            // 为 activeEffect 赋值
+            activeEffect = this;
             // 执行 fn 函数
             return this.fn();
         };
@@ -29,12 +32,32 @@ var Vue = (function (exports) {
         _effect.run();
     }
     /**
+     * 收集所有依赖的 WeakMap 实例：
+     * 1. 'key'：响应对象
+     * 2. 'value'：'Map' 对象
+     *    1. 'key'：响应性对象的指定属性
+     *    2. 'value'：指定对象的指定属性的执行函数
+     */
+    var targetMap = new WeakMap();
+    /**
      * 用于收集依赖的方法
      * @param target WeakMap 的 key
      * @param key 代理对象的 key, 当依赖被触发时, 需要根据该 key 获取
      */
     function track(target, key) {
-        console.log('track: 收集依赖');
+        // 如果当前不存在执行函数，则直接 return
+        if (!activeEffect)
+            return;
+        // 尝试从 targetMap 中, 根据 target 获取 map
+        var depsMap = targetMap.get(target);
+        // 如果获取到的 map 不存在, 根据 target 获取 map
+        if (!depsMap) {
+            targetMap.set(target, (depsMap = new Map()));
+        }
+        // 为指定 map, 指定 key 设置回调函数
+        depsMap.set(key, activeEffect);
+        // 临时打印
+        console.log(targetMap);
     }
     /**
      * 触发依赖的方法
@@ -59,7 +82,7 @@ var Vue = (function (exports) {
             // 利用 Reflect 得到返回值
             var res = Reflect.get(target, key, receiver);
             // 收集依赖
-            track();
+            track(target, key);
             return res;
         };
     }
