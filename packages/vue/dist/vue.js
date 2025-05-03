@@ -2,9 +2,63 @@ var Vue = (function (exports) {
     'use strict';
 
     /**
+     * 用于收集依赖的方法
+     * @param target WeakMap 的 key
+     * @param key 代理对象的 key, 当依赖被触发时, 需要根据该 key 获取
+     */
+    function track(target, key) {
+        console.log('track: 收集依赖');
+    }
+    /**
+     * 触发依赖的方法
+     * @param target WeakMap 的 key
+     * @param key 代理对象的 key, 当依赖被触发时, 需要根据该 key 获取
+     * @param newValue 指定 key 的最新值
+     * @param oldValue 指定 key 的旧值
+     */
+    function trigger(target, key, newValue) {
+        console.log('trigger: 触发依赖');
+    }
+
+    /**
+     * getter 的回调方法
+     */
+    var get = createGetter();
+    /**
+     * 创建 getter 的回调方法
+     */
+    function createGetter() {
+        return function get(target, key, receiver) {
+            // 利用 Reflect 得到返回值
+            var res = Reflect.get(target, key, receiver);
+            // 收集依赖
+            track();
+            return res;
+        };
+    }
+    /**
+     * setter 回调方法
+     */
+    var set = createSetter();
+    /**
+     * 创建 setter 回调方法
+     */
+    function createSetter() {
+        return function set(target, key, value, receiver) {
+            // 利用 Reflect.set 设置新值
+            var result = Reflect.set(target, key, value, receiver);
+            // 触发依赖
+            trigger();
+            return result;
+        };
+    }
+    /**
      * 响应性的 handler
      */
-    var mutableHandlers = {};
+    var mutableHandlers = {
+        set: set,
+        get: get
+    };
 
     /**
      * 响应性 Map 缓存对象
