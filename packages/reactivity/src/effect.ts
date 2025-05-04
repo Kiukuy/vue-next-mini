@@ -1,3 +1,4 @@
+import { isArray } from "@vue/shared"
 import { createDep, Dep } from "./dep"
 
 type KeyToDepMap = Map<any, Dep>
@@ -107,7 +108,7 @@ export function trigger(
  */
 export function triggerEffects(dep: Dep) {
   // 把 dep 构建为一个数组
-  const effects = Array.isArray(dep) ? dep : [...dep]
+  const effects = isArray(dep) ? dep : [...dep]
   // 依次触发
   for (const effect of effects) {
     triggerEffect(effect)
