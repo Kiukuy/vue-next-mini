@@ -9,6 +9,10 @@ var Vue = (function (exports) {
      * 判断是否为一个对象
      */
     var isObject = function (val) { return val !== null && typeof val === 'object'; };
+    /**
+     * 对比两个数据是否发生了改变
+     */
+    var hasChanged = function (value, oldValue) { return !Object.is(value, oldValue); };
 
     /******************************************************************************
     Copyright (c) Microsoft Corporation.
@@ -293,6 +297,8 @@ var Vue = (function (exports) {
             this.dep = undefined;
             // 是否为 ref 类型数据的标记
             this.__v_isRef = true;
+            // 原始数据
+            this._rawValue = value;
             // 如果 __v_isShallow 为 true, 则 value 不会被转化为 reactive 数据, 即如果当前 value 为复杂数据类型, 则会失去响应性。
             this._value = __v_isShallow ? value : toReactive(value);
         }
@@ -304,7 +310,21 @@ var Vue = (function (exports) {
                 trackRefValue(this);
                 return this._value;
             },
-            set: function (newValue) { },
+            set: function (newVal) {
+                /**
+                 * newVal 为新数据
+                 * this._rawValue 为旧数据（原始数据）
+                 * 对比这两个数据是否发生了变化
+                 */
+                if (hasChanged(newVal, this._rawValue)) {
+                    // 更新原始数据
+                    this._rawValue = newVal;
+                    // 更新 .value 的值
+                    this._value = toReactive(newVal);
+                    // 触发依赖
+                    triggerRefValue(this);
+                }
+            },
             enumerable: false,
             configurable: true
         });
@@ -317,6 +337,14 @@ var Vue = (function (exports) {
     function trackRefValue(ref) {
         if (activeEffect) {
             trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
+    /**
+     * 为 ref 的 value 进行触发依赖工作
+     */
+    function triggerRefValue(ref) {
+        if (ref.dep) {
+            triggerEffects(ref.dep);
         }
     }
     /**
